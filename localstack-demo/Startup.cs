@@ -1,3 +1,6 @@
+using Amazon.Runtime;
+using Amazon.S3;
+using localstack_demo.Controllers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -8,8 +11,11 @@ namespace localstack_demo
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private readonly IHostEnvironment _hostEnvironment;
+
+        public Startup(IConfiguration configuration, IHostEnvironment hostEnvironment)
         {
+            _hostEnvironment = hostEnvironment;
             Configuration = configuration;
         }
 
@@ -19,6 +25,19 @@ namespace localstack_demo
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddTransient<IBucketRepository, BucketRepository>();
+
+            if (_hostEnvironment.IsDevelopment())
+            {
+                var amazonS3 = new AmazonS3Client(new BasicAWSCredentials("abc", "def"), new AmazonS3Config
+                {
+                    ServiceURL = Consts.S3ServiceUrl,
+                    ForcePathStyle = true,
+                    UseHttp = true
+                });
+
+                services.AddTransient(typeof(IAmazonS3), provider => amazonS3);
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
